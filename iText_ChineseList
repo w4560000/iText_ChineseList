@@ -1,0 +1,167 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using iTextSharp.text;
+using Microsoft.International.Formatters;
+using System.Globalization;
+using System.Text.RegularExpressions;
+using iTextSharp.text.factories;
+
+
+namespace iTextSharp.Extensions
+{
+    /// <summary>
+    /// 功能描述：建立iTextSharp.text中文編號清單，因原先沒有支援中文List
+    /// 版    本：1.0.0
+    /// 建立人員：秉庠
+    /// 建立日期：20180604
+    /// 最後修改人員：
+    /// 最後修改日期： 
+    /// </summary>
+    public class ChineseList : List
+    {
+        public ChineseList(bool brackets, bool IsoldNumber)
+        {
+            this.numbered = IsoldNumber; //true= 甲乙丙丁,false=一二三四
+            this.lowercase = brackets;  //true = 、 ,false = () ;
+        }
+
+        public override bool Add(IElement o)
+        {
+            string postSymbol1 = "、";
+            string postSymbol2 = "(";
+            string postSymbol3 = ")";
+            if (o is ListItem)
+            {
+                ListItem item = (ListItem)o;
+                Chunk chunk = new Chunk(preSymbol, symbol.Font);
+
+                if (lowercase)  //加頓號
+                {
+                    chunk.Attributes = symbol.Attributes;
+                    chunk.Append(ChineseNumberFactory.GetString(first + list.Count, numbered));
+                    chunk.Append(postSymbol1);
+                }
+                else //加括號
+                {
+                    chunk.Attributes = symbol.Attributes;
+                    chunk.Append(postSymbol2);
+                    chunk.Append(ChineseNumberFactory.GetString(first + list.Count, numbered));
+                    chunk.Append(postSymbol3);
+                }
+                item.ListSymbol = chunk;
+                item.SetIndentationLeft(symbolIndent, autoindent);
+                item.IndentationRight = 0;
+                list.Add(item);
+                return true;
+            }
+            else if (o is List)
+            {
+                List nested = (List)o;
+                nested.IndentationLeft = nested.IndentationLeft + symbolIndent;
+                first--;
+                list.Add(nested);
+                return true;
+            }
+            return false;
+        }
+    }
+    public class ChineseNumberFactory      
+    {
+        public static string GetString(int index, bool IsOldNumber)
+        {
+            return FormatChineseNumber(index, IsOldNumber);
+        }
+
+        private static string FormatChineseNumber(decimal n, bool IsOldNumber) //轉換為中文數字
+        {
+            string t =
+                EastAsiaNumericFormatter.FormatWithCulture(
+                "Ln", n,
+                null, new CultureInfo("zh-TW"));
+            if (IsOldNumber)
+            {
+                string o = GetChineseOldNumber(n);
+                return o;
+            }
+            string pattern = "[^一二三四五六七八九]十";
+            string one = "一";
+            string res = Regex.Replace(t, pattern, m =>
+            {
+                return m.Value.Substring(0, 1) + one + m.Value.Substring(1);
+            });
+            return res;
+        }
+
+        private static string GetChineseOldNumber(decimal n)  //轉換為中國數字
+        {
+            string[] strChineseOldNumber = { "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸" };
+            n = n - 1;
+            string NewStr = n.ToString();
+
+            int len = NewStr.Length;
+            string tmpstr, rstr;
+            rstr = "";
+
+            for (int i = 1; i <= len; i++)
+            {
+                tmpstr = NewStr.Substring(len - i, 1);
+                rstr = rstr + strChineseOldNumber[Int32.Parse(tmpstr)];
+            }
+            return rstr;
+        }
+    }
+
+    public class NumberList : List    //數字加上頓號、括號
+    {
+        public NumberList(bool lowercase)
+            : base(true)
+        {
+            this.lowercase = lowercase;
+        }
+
+        public override bool Add(IElement o)
+        {
+            string postSymbol1 = "、";
+            string postSymbol2 = "(";
+            string postSymbol3 = ")";
+            if (o is ListItem)
+            {
+                ListItem item = (ListItem)o;
+                Chunk chunk = new Chunk(preSymbol, symbol.Font);
+                int index =first + list.Count;
+                if (lowercase)  //加頓號
+                {
+                    chunk.Attributes = symbol.Attributes;
+                    chunk.Append(index.ToString());
+                    chunk.Append(postSymbol1);
+                }
+                else //加括號
+                {
+                    chunk.Attributes = symbol.Attributes;
+                    chunk.Append(postSymbol2);
+                    chunk.Append(index.ToString());
+                    chunk.Append(postSymbol3);
+                }
+                item.ListSymbol = chunk;
+                item.SetIndentationLeft(symbolIndent, autoindent);
+                item.IndentationRight = 0;
+                list.Add(item);
+                return true;
+            }
+            else if (o is List)
+            {
+                List nested = (List)o;
+                nested.IndentationLeft = nested.IndentationLeft + symbolIndent;
+                first--;
+                list.Add(nested);
+                return true;
+            }
+            return false;
+        }
+    }
+}
+
+
+
